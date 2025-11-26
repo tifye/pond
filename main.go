@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/hajimehoshi/ebiten/v2"
+	"github.com/hajimehoshi/ebiten/v2/inpututil"
 	"github.com/hajimehoshi/ebiten/v2/vector"
 )
 
@@ -23,6 +24,8 @@ type Pond struct {
 	dt      float64
 	elapsed float64
 
+	mouseX, mouseY float64
+
 	screenCenterX float64
 	screenCenterY float64
 
@@ -32,10 +35,18 @@ type Pond struct {
 }
 
 func (p *Pond) Update() error {
+	if inpututil.IsKeyJustPressed(ebiten.KeyEscape) {
+		return ebiten.Termination
+	}
+
 	p.elapsed += p.dt
 
 	p.circleX = p.screenCenterX + math.Cos(p.elapsed*2.0)*p.orbitRadius
 	p.circleY = p.screenCenterY + math.Sin(p.elapsed*2.0)*p.orbitRadius
+
+	mx, my := ebiten.CursorPosition()
+	p.mouseX = float64(mx)
+	p.mouseY = float64(my)
 	return nil
 }
 
@@ -63,8 +74,8 @@ func main() {
 	// Transpacy doesnt work when setting window to exact size
 	// of monitor. My guess is that it thinks that nothing needs to render
 	// behind it and that changes the properties of the window
-	// ebiten.SetWindowSize(w-1, h-1)
-	ebiten.SetFullscreen(true)
+	ebiten.SetWindowSize(w-1, h-1)
+	// ebiten.SetFullscreen(true)
 	ebiten.SetWindowMousePassthrough(true)
 	ebiten.SetWindowDecorated(false)
 	ebiten.SetCursorMode(ebiten.CursorModeHidden)
