@@ -4,9 +4,19 @@ import (
 	"image/color"
 	"log"
 	"math"
+	"os"
+	"strings"
 
 	"github.com/hajimehoshi/ebiten/v2"
 	"github.com/hajimehoshi/ebiten/v2/vector"
+)
+
+type Mode = string
+
+const (
+	ScreensaverModeFlag Mode = "/c"
+	ConfigModeFlag      Mode = "/p"
+	PreviewModeFlag     Mode = "/s"
 )
 
 type Pond struct {
@@ -38,13 +48,27 @@ func (p *Pond) Layout(outsideWidth, outsideHeight int) (screenWidth, screenHeigh
 }
 
 func main() {
+	if len(os.Args) > 1 {
+		arg := strings.ToLower(os.Args[1])
+		switch {
+		case strings.HasPrefix(arg, ConfigModeFlag):
+			return
+		case strings.HasPrefix(arg, PreviewModeFlag):
+		case strings.HasPrefix(arg, ScreensaverModeFlag):
+		default:
+		}
+	}
+
 	w, h := ebiten.Monitor().Size()
 	// Transpacy doesnt work when setting window to exact size
 	// of monitor. My guess is that it thinks that nothing needs to render
 	// behind it and that changes the properties of the window
-	ebiten.SetWindowSize(w-1, h-1)
+	// ebiten.SetWindowSize(w-1, h-1)
+	ebiten.SetFullscreen(true)
 	ebiten.SetWindowMousePassthrough(true)
 	ebiten.SetWindowDecorated(false)
+	ebiten.SetCursorMode(ebiten.CursorModeHidden)
+	ebiten.SetWindowResizingMode(ebiten.WindowResizingModeDisabled)
 	ebiten.SetWindowFloating(true)
 	ebiten.SetWindowTitle("Pond")
 
