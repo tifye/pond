@@ -7,16 +7,25 @@ import (
 	"github.com/hajimehoshi/ebiten/v2"
 	"github.com/hajimehoshi/ebiten/v2/inpututil"
 	"github.com/hajimehoshi/ebiten/v2/vector"
+	"github.com/tifye/pond/pkg/mathutil"
+	"github.com/tifye/pond/pkg/mathutil/fabrik"
 )
+
+type fish struct {
+	bones       []mathutil.Point
+	boneLengths []float64
+}
 
 type App struct {
 	dt      float64
 	elapsed float64
 
+	debugColor color.Color
+
 	mouseX, mouseY               float64
 	screenCenterX, screenCenterY float64
-	circleX, circleY             float64
-	orbitRadius                  float64
+
+	koi fish
 }
 
 func NewApp() *App {
@@ -33,11 +42,30 @@ func NewApp() *App {
 	ebiten.SetWindowFloating(true)
 	ebiten.SetWindowTitle("Pond")
 
+	screenCenterX := float64(w / 2)
+	screenCenterY := float64(h / 2)
+
+	koiBones := make([]mathutil.Point, 20)
+	koiBoneLengths := make([]float64, len(koiBones)-1)
+	koiBones[0].X = screenCenterX
+	koiBones[0].Y = screenCenterY
+	for i := 1; i < len(koiBones); i++ {
+		koiBones[i].X = screenCenterX
+		koiBones[i].Y = screenCenterY + 50.0*math.Pow(float64(i), 0.75)
+		koiBoneLengths[i-1] = koiBones[i].Distance(koiBones[i-1])
+	}
+
 	return &App{
-		screenCenterX: float64(w / 2),
-		screenCenterY: float64(h / 2),
+		debugColor: color.RGBA{R: 125, G: 200, B: 85, A: 255},
+
+		screenCenterX: screenCenterX,
+		screenCenterY: screenCenterY,
 		dt:            1.0 / 60.0, // default for ebiten. It runs on fixed update rate
-		orbitRadius:   50,
+
+		koi: fish{
+			bones:       koiBones,
+			boneLengths: koiBoneLengths,
+		},
 	}
 }
 
@@ -55,18 +83,40 @@ func (a *App) Update() error {
 
 	a.elapsed += a.dt
 
-	a.circleX = a.screenCenterX + math.Cos(a.elapsed*2.0)*a.orbitRadius
-	a.circleY = a.screenCenterY + math.Sin(a.elapsed*2.0)*a.orbitRadius
-
 	mx, my := ebiten.CursorPosition()
 	a.mouseX = float64(mx)
 	a.mouseY = float64(my)
+
+	fabrik.SolveFABRIK(
+		a.koi.bones,
+		a.koi.boneLengths,
+		mathutil.Point{
+			X: a.mouseX,
+			Y: a.mouseY,
+		},
+		math.Pi*0.5,
+	)
 
 	return nil
 }
 
 func (a *App) Draw(screen *ebiten.Image) {
-	vector.FillCircle(screen, float32(a.circleX), float32(a.circleY), 50, color.RGBA{R: 125, G: 200, B: 85, A: 255}, false)
+	for _, bone := range a.koi.bones {
+		vector.FillCircle(screen, float32(bone.X), float32(bone.Y), 5, a.debugColor, false)
+	}
+
+	for i := range a.koi.boneLengths {
+		// face the front
+		curBone := a.koi.bones[i+1]
+		nextBone := a.koi.bones[i]
+
+		segment := curBone.Subtract(nextBone)
+		left := segment.RotateCounterClockwise().Add(nextBone)
+		right := segment.RotateClockwise().Add(nextBone)
+
+		vector.FillCircle(screen, float32(left.X), float32(left.Y), 3, a.debugColor, false)
+		vector.FillCircle(screen, float32(right.X), float32(right.Y), 3, a.debugColor, false)
+	}
 }
 
 func (a *App) Layout(outsideWidth, outsideHeight int) (screenWidth, screenHeight int) {
