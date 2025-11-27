@@ -7,6 +7,7 @@ import (
 	"github.com/hajimehoshi/ebiten/v2"
 	"github.com/hajimehoshi/ebiten/v2/inpututil"
 	"github.com/hajimehoshi/ebiten/v2/vector"
+	"github.com/tifye/pond/pkg/agent"
 	"github.com/tifye/pond/pkg/mathutil"
 	"github.com/tifye/pond/pkg/mathutil/fabrik"
 )
@@ -22,10 +23,11 @@ type App struct {
 
 	debugColor color.Color
 
-	mouseX, mouseY               float64
+	mousePos                     mathutil.Point
 	screenCenterX, screenCenterY float64
 
-	koi fish
+	koi    fish
+	agents *agent.Agents
 }
 
 func NewApp() *App {
@@ -51,9 +53,13 @@ func NewApp() *App {
 	koiBones[0].Y = screenCenterY
 	for i := 1; i < len(koiBones); i++ {
 		koiBones[i].X = screenCenterX
-		koiBones[i].Y = screenCenterY + 50.0*math.Pow(float64(i), 0.75)
+		koiBones[i].Y = screenCenterY + 35.0*math.Pow(float64(i), 0.75)
 		koiBoneLengths[i-1] = koiBones[i].Distance(koiBones[i-1])
 	}
+
+	agents := agent.NewAgents(1, 1)
+	agents.AddBehaviour(agent.NewWander(agents.Num(), 1, 50, 50, math.Pi))
+	agents.AddBehaviour(agent.Boundry(float64(w), float64(h), 200, 0.05))
 
 	return &App{
 		debugColor: color.RGBA{R: 125, G: 200, B: 85, A: 255},
@@ -66,6 +72,7 @@ func NewApp() *App {
 			bones:       koiBones,
 			boneLengths: koiBoneLengths,
 		},
+		agents: agents,
 	}
 }
 
@@ -84,16 +91,16 @@ func (a *App) Update() error {
 	a.elapsed += a.dt
 
 	mx, my := ebiten.CursorPosition()
-	a.mouseX = float64(mx)
-	a.mouseY = float64(my)
+	a.mousePos.X = float64(mx)
+	a.mousePos.Y = float64(my)
+
+	a.agents.Update(a.elapsed, a.dt)
+	a.mousePos = a.agents.Position(0)
 
 	fabrik.SolveFABRIK(
 		a.koi.bones,
 		a.koi.boneLengths,
-		mathutil.Point{
-			X: a.mouseX,
-			Y: a.mouseY,
-		},
+		a.mousePos,
 		math.Pi*0.5,
 	)
 

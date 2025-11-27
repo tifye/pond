@@ -3,13 +3,15 @@ package mathutil
 import "math"
 
 const (
-	Pi2 = math.Pi * 2
+	Pi2             = math.Pi * 2
+	Epsilon float64 = 0.000001
 )
 
 type Point struct {
 	X float64
 	Y float64
 }
+type Vector = Point
 
 func (p Point) Subtract(o Point) Point {
 	return Point{
@@ -23,6 +25,25 @@ func (p Point) Add(o Point) Point {
 		X: p.X + o.X,
 		Y: p.Y + o.Y,
 	}
+}
+
+func (p Point) Limit(max float64) Point {
+	magSqrd := p.MagnitudeSquared()
+	// todo: make branchless
+	if magSqrd < max*max {
+		return p
+	}
+
+	scale := max/math.Sqrt(magSqrd) + Epsilon
+	return p.MultiplyScalar(scale)
+}
+
+func (p Point) MagnitudeSquared() float64 {
+	return p.X*p.X + p.Y*p.Y
+}
+
+func (p Point) Magnitude() float64 {
+	return math.Sqrt(p.X*p.X + p.Y*p.Y)
 }
 
 func (p Point) Distance(o Point) float64 {
