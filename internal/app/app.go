@@ -1,21 +1,19 @@
 package app
 
 import (
+	_ "embed"
 	"image/color"
 	"math"
 
 	"github.com/hajimehoshi/ebiten/v2"
 	"github.com/hajimehoshi/ebiten/v2/inpututil"
-	"github.com/hajimehoshi/ebiten/v2/vector"
+	"github.com/tifye/pond/internal/entity"
 	"github.com/tifye/pond/pkg/agent"
 	"github.com/tifye/pond/pkg/mathutil"
-	"github.com/tifye/pond/pkg/mathutil/fabrik"
 )
 
-type fish struct {
-	bones       []mathutil.Point
-	boneLengths []float64
-}
+//go:embed pixel_shader.go
+var pixelShader []byte
 
 type App struct {
 	dt      float64
@@ -26,8 +24,13 @@ type App struct {
 	mousePos                     mathutil.Point
 	screenCenterX, screenCenterY float64
 
-	koi    fish
 	agents *agent.Agents
+
+	pixelShader *ebiten.Shader
+
+	fish []*entity.Fish
+
+	offscreen *ebiten.Image
 }
 
 func NewApp() *App {
@@ -47,17 +50,25 @@ func NewApp() *App {
 	screenCenterX := float64(w / 2)
 	screenCenterY := float64(h / 2)
 
-	koiBones := make([]mathutil.Point, 20)
-	koiBoneLengths := make([]float64, len(koiBones)-1)
-	koiBones[0].X = screenCenterX
-	koiBones[0].Y = screenCenterY
-	for i := 1; i < len(koiBones); i++ {
-		koiBones[i].X = screenCenterX
-		koiBones[i].Y = screenCenterY + 35.0*math.Pow(float64(i), 0.75)
-		koiBoneLengths[i-1] = koiBones[i].Distance(koiBones[i-1])
+	ps, err := ebiten.NewShader(pixelShader)
+	if err != nil {
+		panic(err)
 	}
 
-	agents := agent.NewAgents(1, 1)
+	fish := make([]*entity.Fish, 3)
+	for i := range fish {
+		fish[i] = entity.NewFish(entity.FishConfig{
+			SpawnPoint: mathutil.Point{
+				X: screenCenterX,
+				Y: screenCenterY,
+			},
+			BoneChainUpdater: entity.BoneChainFABRIKUpdater{
+				MinAngle: math.Pi * 0.85,
+			},
+		})
+	}
+
+	agents := agent.NewAgents(uint(len(fish)))
 	agents.AddBehaviour(agent.NewWander(agents.Num(), 1, 50, 50, math.Pi))
 	agents.AddBehaviour(agent.Boundry(float64(w), float64(h), 200, 0.05))
 
@@ -68,11 +79,11 @@ func NewApp() *App {
 		screenCenterY: screenCenterY,
 		dt:            1.0 / 60.0, // default for ebiten. It runs on fixed update rate
 
-		koi: fish{
-			bones:       koiBones,
-			boneLengths: koiBoneLengths,
-		},
+		fish:   fish,
 		agents: agents,
+
+		pixelShader: ps,
+		offscreen:   ebiten.NewImage(w, h),
 	}
 }
 
@@ -95,35 +106,42 @@ func (a *App) Update() error {
 	a.mousePos.Y = float64(my)
 
 	a.agents.Update(a.elapsed, a.dt)
-	a.mousePos = a.agents.Position(0)
 
-	fabrik.SolveFABRIK(
-		a.koi.bones,
-		a.koi.boneLengths,
-		a.mousePos,
-		math.Pi*0.5,
-	)
+	for i := range a.fish {
+		a.fish[i].Position = a.agents.Position(uint(i))
+		a.fish[i].Update()
+	}
 
 	return nil
 }
 
 func (a *App) Draw(screen *ebiten.Image) {
-	for _, bone := range a.koi.bones {
-		vector.FillCircle(screen, float32(bone.X), float32(bone.Y), 5, a.debugColor, false)
+	mx, my := ebiten.CursorPosition()
+
+	opts := &ebiten.DrawRectShaderOptions{}
+	opts.Uniforms = map[string]any{
+		"Time":   float32(ebiten.Tick()) / float32(ebiten.TPS()),
+		"Cursor": []float32{float32(mx), float32(my)},
 	}
 
-	for i := range a.koi.boneLengths {
-		// face the front
-		curBone := a.koi.bones[i+1]
-		nextBone := a.koi.bones[i]
-
-		segment := curBone.Subtract(nextBone)
-		left := segment.RotateCounterClockwise().Add(nextBone)
-		right := segment.RotateClockwise().Add(nextBone)
-
-		vector.FillCircle(screen, float32(left.X), float32(left.Y), 3, a.debugColor, false)
-		vector.FillCircle(screen, float32(right.X), float32(right.Y), 3, a.debugColor, false)
+	for _, f := range a.fish {
+		f.Draw(screen)
 	}
+
+	a.offscreen.DrawImage(screen, nil)
+	a.offscreen.DrawRectShader(screen.Bounds().Dx(), screen.Bounds().Dy(), a.pixelShader, &ebiten.DrawRectShaderOptions{
+		Images: [4]*ebiten.Image{
+			screen,
+		},
+		Uniforms: map[string]any{
+			"Resolution": []float32{float32(screen.Bounds().Dx()), float32(screen.Bounds().Dy())},
+		},
+	})
+
+	screen.Clear()
+	screen.DrawImage(a.offscreen, nil)
+
+	a.offscreen.Clear()
 }
 
 func (a *App) Layout(outsideWidth, outsideHeight int) (screenWidth, screenHeight int) {

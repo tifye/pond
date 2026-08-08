@@ -7,7 +7,7 @@ import (
 
 type Agents struct {
 	len, cap           uint
-	maxSpeed, maxForce float64
+	MaxSpeed, MaxForce float64
 	position           []mathutil.Point
 	velocity           []mathutil.Point
 	acceleration       []mathutil.Point
@@ -28,7 +28,7 @@ func (f BehaviourFunc) Update(agents *Agents, idx uint, lastTime, deltaTime floa
 func NewAgents(num uint, cap ...uint) *Agents {
 	assert.Assert(len(cap) < 2, "expected only one")
 
-	var capacity uint = 0
+	var capacity uint = num
 	if len(cap) > 0 {
 		capacity = cap[0]
 	}
@@ -36,8 +36,8 @@ func NewAgents(num uint, cap ...uint) *Agents {
 	return &Agents{
 		len:      num,
 		cap:      uint(capacity),
-		maxSpeed: 10,
-		maxForce: 3,
+		MaxSpeed: 7,
+		MaxForce: 3,
 		// todo: test whether to go for three separate or just one
 		position:     make([]mathutil.Point, num, capacity),
 		velocity:     make([]mathutil.Point, num, capacity),
@@ -61,7 +61,7 @@ func (agents *Agents) Update(lastTime, deltaTime float64) {
 
 	for i := range agents.len {
 		agents.velocity[i] = agents.velocity[i].Add(agents.acceleration[i])
-		agents.velocity[i] = agents.velocity[i].Limit(agents.maxSpeed)
+		agents.velocity[i] = agents.velocity[i].Limit(agents.MaxSpeed)
 		agents.position[i] = agents.position[i].Add(agents.velocity[i])
 		agents.acceleration[i].X = 0
 		agents.acceleration[i].Y = 0
@@ -69,7 +69,7 @@ func (agents *Agents) Update(lastTime, deltaTime float64) {
 }
 
 func (agents *Agents) ApplyForce(idx uint, force mathutil.Vector) {
-	force = force.Limit(agents.maxForce)
+	force = force.Limit(agents.MaxForce)
 	agents.acceleration[idx] = agents.acceleration[idx].Add(force)
 }
 
@@ -92,7 +92,7 @@ func (agents *Agents) Num() uint {
 func (agents *Agents) Seek(idx uint, target mathutil.Point, strength float64) {
 	desired := target.Subtract(agents.Position(idx)).
 		Normalize().
-		MultiplyScalar(agents.maxSpeed)
+		MultiplyScalar(agents.MaxSpeed)
 	steer := desired.Subtract(agents.Velocity(idx))
 	agents.ApplyForce(idx, steer.MultiplyScalar(strength))
 }

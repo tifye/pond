@@ -1,6 +1,9 @@
 package mathutil
 
-import "math"
+import (
+	"fmt"
+	"math"
+)
 
 const (
 	Pi2             = math.Pi * 2
@@ -11,7 +14,13 @@ type Point struct {
 	X float64
 	Y float64
 }
+
 type Vector = Point
+type Size = Point
+
+func NewPoint(x, y float64) Point {
+	return Point{x, y}
+}
 
 func (p Point) Subtract(o Point) Point {
 	return Point{
@@ -29,7 +38,7 @@ func (p Point) Add(o Point) Point {
 
 func (p Point) Limit(max float64) Point {
 	magSqrd := p.MagnitudeSquared()
-	// todo: make branchless
+
 	if magSqrd < max*max {
 		return p
 	}
@@ -56,7 +65,6 @@ func (p Point) DistanceSquared(o Point) float64 {
 	return temp.X*temp.X + temp.Y*temp.Y
 }
 
-// todo: optimize
 func (p Point) Normalize() Point {
 	sqr := math.Sqrt(p.X*p.X + p.Y*p.Y)
 	return Point{
@@ -94,6 +102,13 @@ func (p Point) RotateClockwise() Point {
 	}
 }
 
+func (p Point) Rotate(deltaAngle float64) Point {
+	newAngle := math.Atan2(p.Y, p.X) + deltaAngle
+	p.X = math.Cos(newAngle)
+	p.Y = math.Sin(newAngle)
+	return p
+}
+
 func (p Point) Follow(o Point, distance float64) Point {
 	return p.Subtract(o).
 		Normalize().
@@ -101,8 +116,15 @@ func (p Point) Follow(o Point, distance float64) Point {
 		Add(o)
 }
 
-// todo: optimize
 func (p Point) AngleBetween(o Point) float64 {
 	temp := p.Subtract(o)
 	return math.Atan2(temp.Y, temp.X) + math.Pi
+}
+
+func (p Point) Angle() float64 {
+	return math.Atan2(p.Y, p.Y)
+}
+
+func (p Point) String() string {
+	return fmt.Sprintf("%b, %b", p.X, p.Y)
 }
