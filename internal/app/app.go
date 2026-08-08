@@ -55,7 +55,7 @@ func NewApp() *App {
 		panic(err)
 	}
 
-	fish := make([]*entity.Fish, 3)
+	fish := make([]*entity.Fish, 4)
 	for i := range fish {
 		fish[i] = entity.NewFish(entity.FishConfig{
 			SpawnPoint: mathutil.Point{
@@ -68,7 +68,7 @@ func NewApp() *App {
 		})
 	}
 
-	agents := agent.NewAgents(uint(len(fish)))
+	agents := agent.NewAgents(uint(len(fish)) - 1)
 	agents.AddBehaviour(agent.NewWander(agents.Num(), 1, 50, 50, math.Pi))
 	agents.AddBehaviour(agent.Boundry(float64(w), float64(h), 200, 0.05))
 
@@ -107,10 +107,13 @@ func (a *App) Update() error {
 
 	a.agents.Update(a.elapsed, a.dt)
 
-	for i := range a.fish {
+	for i := range a.agents.Num() {
 		a.fish[i].Position = a.agents.Position(uint(i))
 		a.fish[i].Update()
 	}
+
+	a.fish[len(a.fish)-1].Position = a.mousePos
+	a.fish[len(a.fish)-1].Update()
 
 	return nil
 }
@@ -127,6 +130,8 @@ func (a *App) Draw(screen *ebiten.Image) {
 	for _, f := range a.fish {
 		f.Draw(screen)
 	}
+
+	a.fish[len(a.fish)-1].Draw(screen)
 
 	a.offscreen.DrawImage(screen, nil)
 	a.offscreen.DrawRectShader(screen.Bounds().Dx(), screen.Bounds().Dy(), a.pixelShader, &ebiten.DrawRectShaderOptions{

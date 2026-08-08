@@ -6,6 +6,7 @@ import (
 	"image/color"
 	"image/jpeg"
 	"math"
+	"slices"
 
 	"github.com/hajimehoshi/ebiten/v2"
 	"github.com/hajimehoshi/ebiten/v2/vector"
@@ -40,7 +41,7 @@ type Fish struct {
 	barbelLeft  mathutil.Point
 	barbelRight mathutil.Point
 
-	tail *tail
+	tail *CaudralFin
 }
 
 type mesh struct {
@@ -97,7 +98,7 @@ func NewFish(cfg FishConfig) *Fish {
 		ventralLeftFin:  newFin(25, 20, true),
 		ventralRightFin: newFin(25, 20, false),
 
-		tail: newTail(),
+		tail: NewTail(),
 	}
 
 	f.BuildMesh()
@@ -123,9 +124,8 @@ func (f *Fish) Update() {
 
 	f.curvature = f.spine.Curvature()
 
-	f.tail.BotPosition = f.spine.Joints[len(f.spine.Joints)-4]
-	f.tail.TopPosition = f.spine.Joints[0]
-	f.tail.update()
+	f.tail.Position = f.spine.Joints[len(f.spine.Joints)-1]
+	f.tail.Update()
 
 	f.updateMesh()
 }
@@ -147,7 +147,7 @@ func (f *Fish) Draw(target *ebiten.Image) {
 		},
 	)
 
-	f.tail.draw(target)
+	f.tail.Draw(target)
 
 }
 
@@ -394,16 +394,21 @@ func (f *fin) draw(target *ebiten.Image) {
 	target.DrawImage(f.img, opts)
 }
 
-type tail struct {
-	TopPosition mathutil.Point
-	BotPosition mathutil.Point
+type CaudralFin struct {
+	Position mathutil.Point
 
-	top BoneChain
-	bot BoneChain
+	upperLobe          BoneChain
+	lowerLobe          BoneChain
+	lowerLobeReflected []mathutil.Point
+
+	lobeConnection mathutil.Point
+
+	mesh    mesh
+	texture *ebiten.Image
 }
 
-func newTail() *tail {
-	topN := 15
+func NewTail() *CaudralFin {
+	topN := 10
 	topL := 40.0
 	topBones := make([]mathutil.Point, topN)
 	topBoneLengths := make([]float64, len(topBones)-1)
@@ -412,8 +417,8 @@ func newTail() *tail {
 		topBoneLengths[i-1] = topL / float64(topN)
 	}
 
-	botN := 15
-	botL := topL * 1.2
+	botN := 10
+	botL := topL * 1.4
 	botBones := make([]mathutil.Point, botN)
 	botBoneLengths := make([]float64, len(botBones)-1)
 
@@ -421,41 +426,152 @@ func newTail() *tail {
 		botBoneLengths[i-1] = botL / float64(botN)
 	}
 
-	return &tail{
-		top: BoneChain{
+	texture := ebiten.NewImage(1, 1)
+	texture.Set(0, 0, colors.Neutral300)
+
+	vertices := make([]ebiten.Vertex, len(botBones)+len(topBones)+1) // +1 for the lobe connection
+	indicies := make([]uint16, (len(vertices)-1)*3)
+
+	lobeConnectionIdx := 0
+	topVertsOffset := 1
+	botVertsOffset := topVertsOffset + len(topBones)
+
+	j := 0
+	for boneIdx := 0; boneIdx < len(topBones)-1; boneIdx++ {
+		indicies[j+0] = uint16(topVertsOffset + boneIdx)
+		indicies[j+1] = uint16(topVertsOffset + boneIdx + 1)
+		indicies[j+2] = uint16(lobeConnectionIdx)
+		j += 3
+	}
+
+	for boneIdx := 0; boneIdx < len(botBones)-1; boneIdx++ {
+		indicies[j+0] = uint16(botVertsOffset + boneIdx + 1)
+		indicies[j+1] = uint16(botVertsOffset + boneIdx)
+		indicies[j+2] = uint16(lobeConnectionIdx)
+		j += 3
+	}
+
+	for i := range vertices {
+		vertices[i].ColorR = 1
+		vertices[i].ColorG = 1
+		vertices[i].ColorB = 1
+		vertices[i].ColorA = 1
+	}
+
+	return &CaudralFin{
+		upperLobe: BoneChain{
 			Joints:  topBones,
 			Lengths: topBoneLengths,
 			Updater: BoneChainFABRIKUpdater{
-				MinAngle: 0,
+				MinAngle: math.Pi,
 			},
 		},
 
-		bot: BoneChain{
+		lowerLobe: BoneChain{
 			Joints:  botBones,
 			Lengths: botBoneLengths,
 			Updater: BoneChainFABRIKUpdater{
-				MinAngle: 0,
+				MinAngle: math.Pi * 0.9,
 			},
 		},
+
+		lowerLobeReflected: slices.Clone(botBones),
+
+		mesh: mesh{
+			vertices: vertices,
+			indicies: indicies,
+		},
+
+		texture: texture,
 	}
 }
 
-func (t *tail) update() {
-	t.top.Position = t.TopPosition
-	t.top.Update()
+func (t *CaudralFin) Update() {
+	t.upperLobe.Position = t.Position
+	t.upperLobe.Update()
 
-	t.bot.Position = t.BotPosition
-	t.bot.Update()
+	t.lowerLobe.Position = t.Position
+	t.lowerLobe.Update()
+
+	anchor := t.upperLobe.Joints[0]
+	nv := t.upperLobe.Joints[1].
+		Subtract(anchor).
+		Normalize().
+		Rotate(math.Pi * 0.5)
+
+	t.lowerLobeReflected[0] = t.lowerLobe.Joints[0]
+	t.lowerLobeReflected[1] = t.lowerLobe.Joints[1]
+	for i, p := range t.upperLobe.Joints[2:] {
+		local := p.Subtract(anchor)
+		dot := nv.Dot(local)
+
+		offset := nv.MultiplyScalar(2 * dot)
+		reflected := local.Subtract(offset).Add(anchor)
+
+		t.lowerLobeReflected[i+2] = reflected
+	}
+
+	a := t.upperLobe.Joints[len(t.upperLobe.Joints)-1]
+	b := t.lowerLobeReflected[len(t.lowerLobeReflected)-1]
+	t.lobeConnection = a.Subtract(b).
+		MultiplyScalar(0.5).
+		Add(b).
+		Subtract(t.Position).
+		MultiplyScalar(0.8).
+		Add(t.Position)
+
+	t.updateMesh()
 }
 
-func (t *tail) draw(target *ebiten.Image) {
-	for _, p := range t.bot.Joints {
-		debugCircle(target, p, colors.White)
+func (t *CaudralFin) updateMesh() {
+	lobeConnectionIdx := 0
+	topVertsOffset := 1
+	botVertsOffset := topVertsOffset + len(t.upperLobe.Joints)
+
+	t.mesh.vertices[lobeConnectionIdx].DstX = float32(t.lobeConnection.X)
+	t.mesh.vertices[lobeConnectionIdx].DstY = float32(t.lobeConnection.Y)
+
+	for i, p := range t.upperLobe.Joints {
+		t.mesh.vertices[topVertsOffset+i].DstX = float32(p.X)
+		t.mesh.vertices[topVertsOffset+i].DstY = float32(p.Y)
 	}
 
-	offset := t.BotPosition.Subtract(t.TopPosition)
-	for _, p := range t.top.Joints {
-		debugCircle(target, p.Add(offset), colors.Rose600)
+	for i, p := range t.lowerLobe.Joints {
+		t.mesh.vertices[botVertsOffset+i].DstX = float32(p.X)
+		t.mesh.vertices[botVertsOffset+i].DstY = float32(p.Y)
+	}
+}
+
+func (t *CaudralFin) Draw(target *ebiten.Image) {
+	var path vector.Path
+
+	path.MoveTo(float32(t.Position.X), float32(t.Position.Y))
+	for _, p := range t.upperLobe.Joints[:len(t.upperLobe.Joints)-2] {
+		path.LineTo(float32(p.X), float32(p.Y))
 	}
 
+	path.MoveTo(float32(t.Position.X), float32(t.Position.Y))
+	for _, p := range t.lowerLobe.Joints[:len(t.lowerLobe.Joints)-1] {
+		path.LineTo(float32(p.X), float32(p.Y))
+	}
+
+	vector.StrokePath(
+		target,
+		&path,
+		&vector.StrokeOptions{
+			Width:    6,
+			LineCap:  vector.LineCapRound,
+			LineJoin: vector.LineJoinRound,
+		},
+		nil,
+	)
+
+	// debugCircle(target, t.lobeConnection, colors.White)
+
+	target.DrawTriangles(
+		t.mesh.vertices,
+		t.mesh.indicies,
+		t.texture,
+		nil,
+	)
 }
