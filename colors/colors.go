@@ -12,6 +12,11 @@ var (
 	Transparent color.Color = color.RGBA{R: 0x00, G: 0x00, B: 0x00, A: 0x00}
 )
 
+func WithAlpha(c color.Color, a uint8) color.Color {
+	r, g, b, _ := c.RGBA()
+	return color.RGBA{R: uint8(r), G: uint8(g), B: uint8(b), A: a}
+}
+
 // Slate.
 var (
 	Slate50  color.Color = color.RGBA{R: 0xf8, G: 0xfa, B: 0xfc, A: 0xff}

@@ -109,6 +109,16 @@ func (p Point) Rotate(deltaAngle float64) Point {
 	return p
 }
 
+func (p Point) RotateAround(o Point, deltaAngle float64) Point {
+	var t Point
+
+	p = p.Subtract(o)
+	t.X = p.X*math.Cos(deltaAngle) - p.Y*math.Sin(deltaAngle)
+	t.Y = p.X*math.Sin(deltaAngle) + p.Y*math.Cos(deltaAngle)
+
+	return t.Add(o)
+}
+
 func (p Point) Follow(o Point, distance float64) Point {
 	return p.Subtract(o).
 		Normalize().

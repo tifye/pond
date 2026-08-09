@@ -4,9 +4,11 @@ import (
 	_ "embed"
 	"image/color"
 	"math"
+	"math/rand/v2"
 
 	"github.com/hajimehoshi/ebiten/v2"
 	"github.com/hajimehoshi/ebiten/v2/inpututil"
+	"github.com/hajimehoshi/ebiten/v2/vector"
 	"github.com/tifye/pond/internal/entity"
 	"github.com/tifye/pond/pkg/agent"
 	"github.com/tifye/pond/pkg/mathutil"
@@ -14,6 +16,18 @@ import (
 
 //go:embed pixel_shader.go
 var pixelShader []byte
+
+//go:embed shadow_shader.go
+var shadowShaderData []byte
+var shadowShader *ebiten.Shader
+
+func init() {
+	if s, err := ebiten.NewShader(shadowShaderData); err != nil {
+		panic(err)
+	} else {
+		shadowShader = s
+	}
+}
 
 type App struct {
 	dt      float64
@@ -28,9 +42,13 @@ type App struct {
 
 	pixelShader *ebiten.Shader
 
-	fish []*entity.Fish
+	fish      []*entity.Fish
+	fishLayer *ebiten.Image
 
 	offscreen *ebiten.Image
+
+	lilypads *entity.LilyPads
+	patches  *entity.LilypadPatches
 }
 
 func NewApp() *App {
@@ -55,7 +73,7 @@ func NewApp() *App {
 		panic(err)
 	}
 
-	fish := make([]*entity.Fish, 4)
+	fish := make([]*entity.Fish, 2)
 	for i := range fish {
 		fish[i] = entity.NewFish(entity.FishConfig{
 			SpawnPoint: mathutil.Point{
@@ -68,9 +86,34 @@ func NewApp() *App {
 		})
 	}
 
-	agents := agent.NewAgents(uint(len(fish)) - 1)
+	agents := agent.NewAgents(uint(len(fish)))
 	agents.AddBehaviour(agent.NewWander(agents.Num(), 1, 50, 50, math.Pi))
 	agents.AddBehaviour(agent.Boundry(float64(w), float64(h), 200, 0.05))
+
+	lpMinHeight := 25.0
+	lpMaxHeight := 50.0
+	nlp := 100
+	lpp := make([]mathutil.Point, 0, nlp)
+	lps := make([]int, 0, nlp)
+	lpr := make([]float64, 0, nlp)
+	for range nlp {
+		lpp = append(lpp, mathutil.Point{
+			X: rand.Float64() * float64(w),
+			Y: rand.Float64() * float64(h),
+		})
+
+		rn := rand.Float64()
+		lps = append(lps, int(lpMinHeight+(lpMaxHeight-lpMinHeight)*rn))
+		lpr = append(lpr, rn*math.Pi*2)
+	}
+
+	r := rand.New(rand.NewPCG(0, 0))
+	patches := entity.GenerateLilypadPatches(r, w, h, entity.LilypadPatchesOptions{
+		MinAmount: 2,
+		MaxAmount: 5,
+		MinSize:   200,
+		MaxSize:   500,
+	})
 
 	return &App{
 		debugColor: color.RGBA{R: 125, G: 200, B: 85, A: 255},
@@ -84,6 +127,10 @@ func NewApp() *App {
 
 		pixelShader: ps,
 		offscreen:   ebiten.NewImage(w, h),
+		fishLayer:   ebiten.NewImage(w, h),
+
+		lilypads: entity.NewLilyPads(lpp, lps, lpr),
+		patches:  patches,
 	}
 }
 
@@ -112,8 +159,8 @@ func (a *App) Update() error {
 		a.fish[i].Update()
 	}
 
-	a.fish[len(a.fish)-1].Position = a.mousePos
-	a.fish[len(a.fish)-1].Update()
+	// a.fish[len(a.fish)-1].Position = a.mousePos
+	// a.fish[len(a.fish)-1].Update()
 
 	return nil
 }
@@ -127,21 +174,59 @@ func (a *App) Draw(screen *ebiten.Image) {
 		"Cursor": []float32{float32(mx), float32(my)},
 	}
 
+	a.fishLayer.Clear()
+
 	for _, f := range a.fish {
-		f.Draw(screen)
+		f.Draw(a.fishLayer)
 	}
 
-	a.fish[len(a.fish)-1].Draw(screen)
+	a.lilypads.Draw(a.fishLayer)
 
-	a.offscreen.DrawImage(screen, nil)
-	a.offscreen.DrawRectShader(screen.Bounds().Dx(), screen.Bounds().Dy(), a.pixelShader, &ebiten.DrawRectShaderOptions{
-		Images: [4]*ebiten.Image{
-			screen,
+	// for i, p := range a.patches.Positions {
+	// 	s := a.patches.Sizes[i]
+	// 	debugCircle(screen, p, colors.Rose600, 5)
+
+	// 	vector.FillRect(
+	// 		screen,
+	// 		float32(p.X),
+	// 		float32(p.Y),
+	// 		float32(s.X),
+	// 		float32(s.Y),
+	// 		colors.WithAlpha(colors.Violet600, 100),
+	// 		false,
+	// 	)
+
+	// }
+
+	screen.DrawRectShader(
+		screen.Bounds().Dx(),
+		screen.Bounds().Dy(),
+		shadowShader,
+		&ebiten.DrawRectShaderOptions{
+			Images: [4]*ebiten.Image{
+				a.fishLayer,
+			},
+			Uniforms: map[string]any{
+				"Offset": []float32{10.0, -15.0},
+			},
 		},
-		Uniforms: map[string]any{
-			"Resolution": []float32{float32(screen.Bounds().Dx()), float32(screen.Bounds().Dy())},
+	)
+
+	screen.DrawImage(a.fishLayer, nil)
+
+	a.offscreen.DrawRectShader(
+		screen.Bounds().Dx(),
+		screen.Bounds().Dy(),
+		a.pixelShader,
+		&ebiten.DrawRectShaderOptions{
+			Images: [4]*ebiten.Image{
+				screen,
+			},
+			Uniforms: map[string]any{
+				"Resolution": []float32{float32(screen.Bounds().Dx()), float32(screen.Bounds().Dy())},
+			},
 		},
-	})
+	)
 
 	screen.Clear()
 	screen.DrawImage(a.offscreen, nil)
@@ -151,4 +236,15 @@ func (a *App) Draw(screen *ebiten.Image) {
 
 func (a *App) Layout(outsideWidth, outsideHeight int) (screenWidth, screenHeight int) {
 	return ebiten.Monitor().Size()
+}
+
+func debugCircle(t *ebiten.Image, p mathutil.Point, c color.Color, s float32) {
+	vector.FillCircle(
+		t,
+		float32(p.X),
+		float32(p.Y),
+		s,
+		c,
+		false,
+	)
 }
