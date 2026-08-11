@@ -24,9 +24,12 @@ type Lilypads struct {
 
 	vertices []ebiten.Vertex
 	indices  []uint16
+
+	img       *ebiten.Image
+	translate mathutil.Vector
 }
 
-func New(v []mathutil.Point, sizes []int, angles []float64) *Lilypads {
+func New(width, height int, v []mathutil.Point, sizes []int, angles []float64) *Lilypads {
 	var vertexOffset uint16 = 0
 
 	vertices := make([]ebiten.Vertex, 0)
@@ -65,15 +68,25 @@ func New(v []mathutil.Point, sizes []int, angles []float64) *Lilypads {
 		vertexOffset += 4
 	}
 
+	img := ebiten.NewImage(width, height)
+	op := &ebiten.DrawTrianglesShaderOptions{}
+	img.DrawTrianglesShader(vertices, indices, lilpadShader, op)
+
 	return &Lilypads{
 		Positions: v,
 
 		vertices: vertices,
 		indices:  indices,
+
+		img: img,
 	}
 }
 
 func (l *Lilypads) Draw(target *ebiten.Image) {
-	op := &ebiten.DrawTrianglesShaderOptions{}
-	target.DrawTrianglesShader(l.vertices, l.indices, lilpadShader, op)
+	opts := &ebiten.DrawImageOptions{}
+	opts.GeoM.Translate(
+		float64(target.Bounds().Dx())*0.5-float64(l.img.Bounds().Dx())*0.5,
+		float64(target.Bounds().Dy())*0.5-float64(l.img.Bounds().Dy())*0.5,
+	)
+	target.DrawImage(l.img, opts)
 }

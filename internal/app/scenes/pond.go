@@ -99,6 +99,10 @@ func (p *PondScene) initFish(defaultFish []*entity.Fish) {
 }
 
 func (p *PondScene) initLilypads() {
+	if p.lilypads != nil {
+		return
+	}
+
 	r := rand.New(rand.NewPCG(rand.Uint64(), rand.Uint64()))
 
 	perlin := mathutil.NewPerlin(r)

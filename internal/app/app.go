@@ -2,7 +2,6 @@ package app
 
 import (
 	_ "embed"
-	"time"
 
 	"github.com/hajimehoshi/ebiten/v2"
 	"github.com/hajimehoshi/ebiten/v2/inpututil"
@@ -27,12 +26,12 @@ func NewApp() *App {
 	ebiten.SetWindowFloating(true)
 	ebiten.SetWindowTitle("Pond")
 
-	scene := &scenes.LoadingScene{
-		WaitFor:      time.Second * 3,
-		ScreenWidth:  float64(w),
-		ScreenHeight: float64(h),
+	scene := &scenes.BookstrapScene{
+		Next: &scenes.LoadingScene{
+			ScreenWidth:  float64(w),
+			ScreenHeight: float64(h),
+		},
 	}
-	scene.Initialize()
 
 	return &App{
 		activeScene: scene,

@@ -6,8 +6,13 @@ import (
 
 	"github.com/hajimehoshi/ebiten/v2"
 	"github.com/tifye/pond/internal/entity"
+	"github.com/tifye/pond/internal/entity/lilypad"
 	"github.com/tifye/pond/pkg/mathutil"
 )
+
+type loadResult struct {
+	lilypads *lilypad.Lilypads
+}
 
 type LoadingScene struct {
 	ScreenWidth  float64
@@ -19,10 +24,12 @@ type LoadingScene struct {
 	yin         *entity.Fish
 	yang        *entity.Fish
 	followPoint mathutil.Point
+
+	readych chan loadResult
 }
 
 func (p *LoadingScene) Initialize() {
-	p.waitSec = int64(p.WaitFor.Seconds())
+	p.WaitFor = time.Second * 3
 
 	p.yin = entity.NewFish(entity.FishConfig{
 		SpawnPoint: mathutil.NewPoint(p.ScreenWidth*0.5, p.ScreenHeight*0.5),
@@ -36,16 +43,33 @@ func (p *LoadingScene) Initialize() {
 			MinAngle: math.Pi * 0.85,
 		},
 	})
+
+	p.readych = make(chan loadResult, 1)
+	go p.load()
+}
+
+func (p *LoadingScene) load() {
+	lilypads := lilypad.NewUsingCirclePacking(lilypad.Config{
+		MinRadius: 5,
+	})
+
+	time.Sleep(p.WaitFor)
+	p.readych <- loadResult{
+		lilypads: lilypads,
+	}
 }
 
 func (p *LoadingScene) Update() Scene {
-	if ebiten.Tick()/int64(ebiten.TPS()) >= p.waitSec {
+	select {
+	case result := <-p.readych:
 		pondScene := &PondScene{
 			ScreenWidth:  int(p.ScreenWidth),
 			ScreenHeight: int(p.ScreenHeight),
+			lilypads:     result.lilypads,
 		}
 		pondScene.Initialize([]*entity.Fish{p.yin, p.yang})
 		return pondScene
+	default:
 	}
 
 	amplitude := 175.0

@@ -65,7 +65,7 @@ func NewUsingNoiseThreshold(data []float64, width, height int, scale, threshold 
 		}
 	}
 
-	return New(positions, sizes, rotations)
+	return New(int(scale*float64(width)), int(scale*float64(height)), positions, sizes, rotations)
 }
 
 func NewUsingNoiseChance(data []float64, width, height int, scale float64, f func(v float64) float64, cfg Config) *Lilypads {
@@ -95,5 +95,5 @@ func NewUsingNoiseChance(data []float64, width, height int, scale float64, f fun
 		}
 	}
 
-	return New(positions, sizes, rotations)
+	return New(int(scale*float64(width)), int(scale*float64(height)), positions, sizes, rotations)
 }
