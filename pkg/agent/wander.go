@@ -3,6 +3,7 @@ package agent
 import (
 	"math"
 	"math/rand/v2"
+	"slices"
 
 	"github.com/tifye/pond/pkg/mathutil"
 )
@@ -52,4 +53,10 @@ func (w *Wander) Update(agents *Agents, idx uint, lastTime, deltaTime float64) {
 	steerVec = steerVec.MultiplyScalar(w.force / steerMag)
 
 	agents.ApplyForce(idx, steerVec)
+}
+
+func (w *Wander) Grow(n int) {
+	w.angle = slices.Grow(w.angle, n)
+	w.center = slices.Grow(w.center, n)
+	w.target = slices.Grow(w.target, n)
 }

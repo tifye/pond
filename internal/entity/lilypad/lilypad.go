@@ -1,15 +1,13 @@
-package entity
+package lilypad
 
 import (
 	_ "embed"
-	"math"
-	"math/rand/v2"
 
 	"github.com/hajimehoshi/ebiten/v2"
 	"github.com/tifye/pond/pkg/mathutil"
 )
 
-//go:embed shaders/lilypad_shader.go
+//go:embed lilypad.kage
 var lilypadShaderSrc []byte
 var lilpadShader *ebiten.Shader
 
@@ -21,14 +19,14 @@ func init() {
 	}
 }
 
-type LilyPads struct {
+type Lilypads struct {
 	Positions []mathutil.Point
 
 	vertices []ebiten.Vertex
 	indices  []uint16
 }
 
-func NewLilyPads(v []mathutil.Point, sizes []int, angles []float64) *LilyPads {
+func New(v []mathutil.Point, sizes []int, angles []float64) *Lilypads {
 	var vertexOffset uint16 = 0
 
 	vertices := make([]ebiten.Vertex, 0)
@@ -67,7 +65,7 @@ func NewLilyPads(v []mathutil.Point, sizes []int, angles []float64) *LilyPads {
 		vertexOffset += 4
 	}
 
-	return &LilyPads{
+	return &Lilypads{
 		Positions: v,
 
 		vertices: vertices,
@@ -75,64 +73,7 @@ func NewLilyPads(v []mathutil.Point, sizes []int, angles []float64) *LilyPads {
 	}
 }
 
-func (l *LilyPads) Draw(target *ebiten.Image) {
+func (l *Lilypads) Draw(target *ebiten.Image) {
 	op := &ebiten.DrawTrianglesShaderOptions{}
 	target.DrawTrianglesShader(l.vertices, l.indices, lilpadShader, op)
-}
-
-// type GenerateLilypadsOptions struct {
-// 	MinRadius float64
-// 	MaxRadius float64
-
-// 	MinAmount int
-// 	MaxAmount int
-// }
-
-// func GenerateLilypads(r *rand.Rand, width, height int, opts GenerateLilypadsOptions) *LilyPads {
-// 	rn := r.Float64()
-
-// 	n := opts.MinAmount + int(math.Floor(rn*float64(opts.MaxAmount-opts.MinAmount)))
-
-// 	positions := make([]mathutil.Point, 0, n)
-// 	sizes := make([]int, 0, n)
-// 	angles := make([]float64, 0, n)
-
-// }
-
-type LilypadPatches struct {
-	Positions []mathutil.Point
-	Sizes     []mathutil.Size
-}
-
-type LilypadPatchesOptions struct {
-	MinAmount int
-	MaxAmount int
-
-	MinSize int
-	MaxSize int
-}
-
-func GenerateLilypadPatches(r *rand.Rand, containerWidth, containerHeight int, opts LilypadPatchesOptions) *LilypadPatches {
-	rn := r.Float64()
-	n := opts.MinAmount + int(math.Floor(rn*float64(opts.MaxAmount-opts.MinAmount)))
-
-	positions := make([]mathutil.Point, 0, n)
-	sizes := make([]mathutil.Size, 0, n)
-
-	sizeRange := opts.MaxSize - opts.MinSize
-	for range n {
-		width := opts.MinSize + r.IntN(sizeRange)
-		height := opts.MinSize + r.IntN(sizeRange)
-
-		x := r.IntN(containerWidth)
-		y := r.IntN(containerHeight)
-
-		positions = append(positions, mathutil.NewPoint(float64(x), float64(y)))
-		sizes = append(sizes, mathutil.NewPoint(float64(width), float64(height)))
-	}
-
-	return &LilypadPatches{
-		Positions: positions,
-		Sizes:     sizes,
-	}
 }

@@ -1,6 +1,8 @@
 package agent
 
 import (
+	"slices"
+
 	"github.com/tifye/pond/internal/app/assert"
 	"github.com/tifye/pond/pkg/mathutil"
 )
@@ -77,6 +79,12 @@ func (agents *Agents) Position(idx uint) mathutil.Point {
 	return agents.position[idx]
 }
 
+func (agents *Agents) Set(idx uint, position, velocity, acceleration mathutil.Point) {
+	agents.position[idx] = position
+	agents.velocity[idx] = velocity
+	agents.acceleration[idx] = acceleration
+}
+
 func (agents *Agents) Velocity(idx uint) mathutil.Point {
 	return agents.velocity[idx]
 }
@@ -87,6 +95,28 @@ func (agents *Agents) Acceleration(idx uint) mathutil.Point {
 
 func (agents *Agents) Num() uint {
 	return agents.len
+}
+
+type GrowAbleBehaviour interface {
+	Grow(n int)
+}
+
+// Grow increases the agents capacity to support at least
+// n agents.
+func (agents *Agents) Grow(n int) {
+	assert.Assert(n >= int(agents.len), "cannot grow to a smaller size")
+
+	agents.cap = uint(n)
+	agents.position = slices.Grow(agents.position, n)
+	agents.velocity = slices.Grow(agents.velocity, n)
+	agents.acceleration = slices.Grow(agents.acceleration, n)
+
+	for _, b := range agents.behaviours {
+		growable, ok := b.(GrowAbleBehaviour)
+		if ok {
+			growable.Grow(n)
+		}
+	}
 }
 
 func (agents *Agents) Seek(idx uint, target mathutil.Point, strength float64) {

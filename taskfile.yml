@@ -1,0 +1,6 @@
+version: '3'
+
+tasks:
+  build-screensaver:
+    cmds:
+      - go build -o screensaver.scr ./cmd/screensaver/main.go
