@@ -7,7 +7,7 @@ import (
 	"math"
 
 	"github.com/hajimehoshi/ebiten/v2"
-	"github.com/tifye/pond/pkg/mathutil"
+	"github.com/tifye/pond/internal/entity/circlepacking"
 )
 
 //go:embed lendo.png
@@ -23,21 +23,18 @@ func NewUsingCirclePacking(cfg Config) *Lilypads {
 
 	width, height := img.Bounds().Dx(), img.Bounds().Dy()
 
-	pixels := make([]byte, 4*width*height)
-
 	target := ebiten.NewImageFromImage(img)
-	target.ReadPixels(pixels)
 
-	positions := make([]mathutil.Point, 0, cfg.Amount)
-	sizes := make([]int, 0, cfg.Amount)
-	rotations := make([]float64, 0, cfg.Amount)
+	packing := circlepacking.New(target, 30)
+	for range 10_000 {
+		packing.Update()
+	}
 
-	for len(positions) < int(cfg.Amount) {
-		x, y := cfg.Rand.IntN(width), cfg.Rand.IntN(height)
-		positions = append(positions, mathutil.NewPoint(float64(x), float64(y)))
+	positions, sizes := packing.Compile()
+	rotations := make([]float64, 0, len(positions))
 
+	for range len(positions) {
 		a := cfg.Rand.Float64()
-		sizes = append(sizes, int(cfg.MinRadius+(cfg.MaxRadius-cfg.MinRadius)*a))
 		rotations = append(rotations, a*math.Pi*2)
 	}
 

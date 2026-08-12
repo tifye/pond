@@ -49,14 +49,9 @@ func (p *LoadingScene) Initialize() {
 }
 
 func (p *LoadingScene) load() {
-	lilypads := lilypad.NewUsingCirclePacking(lilypad.Config{
-		MinRadius: 5,
-	})
 
 	time.Sleep(p.WaitFor)
-	p.readych <- loadResult{
-		lilypads: lilypads,
-	}
+	p.readych <- loadResult{}
 }
 
 func (p *LoadingScene) Update() Scene {
