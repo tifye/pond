@@ -555,6 +555,9 @@ func (t *CaudralFin) Draw(target *ebiten.Image) {
 		path.LineTo(float32(p.X), float32(p.Y))
 	}
 
+	opts := &vector.DrawPathOptions{}
+	opts.ColorScale.Scale(1, 1, 1, 0.5)
+
 	vector.StrokePath(
 		target,
 		&path,
@@ -563,7 +566,7 @@ func (t *CaudralFin) Draw(target *ebiten.Image) {
 			LineCap:  vector.LineCapRound,
 			LineJoin: vector.LineJoinRound,
 		},
-		nil,
+		opts,
 	)
 
 	// debugCircle(target, t.lobeConnection, colors.White)

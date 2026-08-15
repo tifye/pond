@@ -1,7 +1,9 @@
 package scenes
 
 import (
+	_ "embed"
 	"math"
+	"math/rand/v2"
 	"time"
 
 	"github.com/hajimehoshi/ebiten/v2"
@@ -10,8 +12,22 @@ import (
 	"github.com/tifye/pond/pkg/mathutil"
 )
 
+//go:embed gradient.kage
+var gradientShaderSrc []byte
+var gradientShader *ebiten.Shader
+
+func init() {
+	if gs, err := ebiten.NewShader(gradientShaderSrc); err != nil {
+		panic(err)
+	} else {
+		gradientShader = gs
+	}
+}
+
 type loadResult struct {
-	lilypads *lilypad.Lilypads
+	lilypads   *lilypad.Lilypads
+	background *ebiten.Image
+	flowers    *lilypad.Flowers
 }
 
 type LoadingScene struct {
@@ -29,7 +45,7 @@ type LoadingScene struct {
 }
 
 func (p *LoadingScene) Initialize() {
-	p.WaitFor = time.Second * 3
+	p.WaitFor = time.Millisecond * 1
 
 	p.yin = entity.NewFish(entity.FishConfig{
 		SpawnPoint: mathutil.NewPoint(p.ScreenWidth*0.5, p.ScreenHeight*0.5),
@@ -49,9 +65,47 @@ func (p *LoadingScene) Initialize() {
 }
 
 func (p *LoadingScene) load() {
+	r := rand.New(rand.NewPCG(rand.Uint64(), rand.Uint64()))
+
+	perlin := mathutil.NewPerlin(r)
+	renderScale := 2.0
+	noiseWidth := int(float64(p.ScreenWidth) / renderScale)
+	noiseHeight := int(float64(p.ScreenHeight) / renderScale)
+
+	noiesMap := perlin.Map2D(noiseWidth, noiseHeight, 0.006)
+	lilypads := lilypad.NewUsingNoiseThreshold(noiesMap, noiseWidth, noiseHeight, 2, 0.5, lilypad.DefaultFromNoiseConfig)
+
+	flowers := lilypad.NewFlowers(int(p.ScreenWidth), int(p.ScreenHeight), 0.3, lilypads.Positions)
+
+	pixels := PixelBufferFromNoise(noiesMap, noiseWidth, noiseHeight)
+	temp := ebiten.NewImage(noiseWidth, noiseHeight)
+	temp.WritePixels(pixels)
+
+	noise := ebiten.NewImage(int(p.ScreenWidth), int(p.ScreenHeight))
+
+	opts := &ebiten.DrawImageOptions{}
+	opts.GeoM.Scale(renderScale, renderScale)
+	noise.DrawImage(temp, opts)
+
+	background := ebiten.NewImage(int(p.ScreenWidth), int(p.ScreenHeight))
+	background.DrawRectShader(
+		int(p.ScreenWidth),
+		int(p.ScreenHeight),
+		gradientShader,
+		&ebiten.DrawRectShaderOptions{
+			Images: [4]*ebiten.Image{
+				noise,
+			},
+		},
+	)
 
 	time.Sleep(p.WaitFor)
-	p.readych <- loadResult{}
+
+	p.readych <- loadResult{
+		lilypads:   lilypads,
+		flowers:    flowers,
+		background: background,
+	}
 }
 
 func (p *LoadingScene) Update() Scene {
@@ -61,6 +115,8 @@ func (p *LoadingScene) Update() Scene {
 			ScreenWidth:  int(p.ScreenWidth),
 			ScreenHeight: int(p.ScreenHeight),
 			lilypads:     result.lilypads,
+			flowers:      result.flowers,
+			background:   result.background,
 		}
 		pondScene.Initialize([]*entity.Fish{p.yin, p.yang})
 		return pondScene

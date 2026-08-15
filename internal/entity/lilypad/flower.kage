@@ -1,0 +1,48 @@
+//go:build ignore
+
+//kage:unit pixels
+
+package main
+
+var Offset vec2
+
+func circle(cur vec2, target vec2, r float) vec4 {
+    b := length(cur-target)
+    a := 1.0 - step(r, b)
+    return vec4(a,a,a,a)
+}
+
+
+func halfCircle(cur vec2, target vec2, r float) vec4 {
+    c := circle(cur, target, r)
+    alpha := step(0.5, cur.x)
+    return c * alpha
+}
+
+func rotate(cur vec2, v vec2, a float) vec2 {
+    v = cur - vec2(0.5, 0.5)
+
+    rotX := v.x * cos(a) - v.y * sin(a) 
+    rotY := v.x * sin(a) + v.y * cos(a) 
+
+    return vec2(rotX, rotY) + vec2(0.5, 0.5)
+}
+
+// rotate vertex positions to rotate lilypad
+func Fragment(position vec4, texCoord vec2, color vec4) vec4 {
+    uv := texCoord 
+
+    c := circle(uv, vec2(0.25, 0.25), 0.25)
+    c += circle(uv, vec2(0.75, 0.25), 0.25)
+    c += circle(uv, vec2(0.75, 0.75), 0.25)
+    c += circle(uv, vec2(0.25, 0.75), 0.25)
+    c *= vec4(1.0, 1.0, 1.0, 1.0)
+
+    middle := circle(uv, vec2(0.5,0.5), 0.25)
+    middle *= vec4(0.911, 0.33, 0.15, 1.0)
+
+    c *= 1.0 - middle.w
+    c += middle
+
+    return c
+}

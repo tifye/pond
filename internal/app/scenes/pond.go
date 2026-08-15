@@ -16,6 +16,18 @@ import (
 var pixelShaderSrc []byte
 var pixelShader *ebiten.Shader
 
+//go:embed crt.kage
+var crtShaderSrc []byte
+var crtShader *ebiten.Shader
+
+//go:embed waves.kage
+var wavesShaderSrc []byte
+var wavesShader *ebiten.Shader
+
+//go:embed vingette.kage
+var vingetteShaderSrc []byte
+var vingetteShader *ebiten.Shader
+
 //go:embed shadow.kage
 var shadowShaderSrc []byte
 var shadowShader *ebiten.Shader
@@ -32,6 +44,24 @@ func init() {
 	} else {
 		pixelShader = s
 	}
+
+	if s, err := ebiten.NewShader(vingetteShaderSrc); err != nil {
+		panic(err)
+	} else {
+		vingetteShader = s
+	}
+
+	if s, err := ebiten.NewShader(wavesShaderSrc); err != nil {
+		panic(err)
+	} else {
+		wavesShader = s
+	}
+
+	if s, err := ebiten.NewShader(crtShaderSrc); err != nil {
+		panic(err)
+	} else {
+		crtShader = s
+	}
 }
 
 type PondScene struct {
@@ -46,7 +76,9 @@ type PondScene struct {
 	shadowLayer      *ebiten.Image
 	shadowShaderOpts *ebiten.DrawRectShaderOptions
 
-	lilypads *lilypad.Lilypads
+	lilypads   *lilypad.Lilypads
+	flowers    *lilypad.Flowers
+	background *ebiten.Image
 }
 
 func (p *PondScene) Initialize(defaultFish []*entity.Fish) {
@@ -139,6 +171,9 @@ func (p *PondScene) Draw(target *ebiten.Image) {
 	}
 
 	p.lilypads.Draw(p.shadowLayer)
+	p.flowers.Draw(p.shadowLayer)
+
+	target.DrawImage(p.background, nil)
 
 	target.DrawRectShader(
 		target.Bounds().Dx(),
@@ -154,6 +189,7 @@ func (p *PondScene) Draw(target *ebiten.Image) {
 
 func AddPostProccessing(target, buffer *ebiten.Image) {
 	buffer.Clear()
+	// target.Clear()
 
 	buffer.DrawRectShader(
 		target.Bounds().Dx(),
@@ -168,13 +204,57 @@ func AddPostProccessing(target, buffer *ebiten.Image) {
 			},
 		},
 	)
+	target.DrawImage(buffer, nil)
 
-	target.Clear()
+	buffer.DrawRectShader(
+		target.Bounds().Dx(),
+		target.Bounds().Dy(),
+		vingetteShader,
+		&ebiten.DrawRectShaderOptions{
+			Images: [4]*ebiten.Image{
+				target,
+			},
+			Uniforms: map[string]any{
+				"Resolution": []float32{float32(target.Bounds().Dx()), float32(target.Bounds().Dy())},
+			},
+		},
+	)
+	target.DrawImage(buffer, nil)
+
+	buffer.DrawRectShader(
+		target.Bounds().Dx(),
+		target.Bounds().Dy(),
+		wavesShader,
+		&ebiten.DrawRectShaderOptions{
+			Images: [4]*ebiten.Image{
+				target,
+			},
+			Uniforms: map[string]any{
+				"Time":       float64(ebiten.Tick()) / float64(ebiten.TPS()),
+				"Resolution": []float32{float32(target.Bounds().Dx()), float32(target.Bounds().Dy())},
+			},
+		},
+	)
+
+	target.DrawImage(buffer, nil)
+	buffer.DrawRectShader(
+		target.Bounds().Dx(),
+		target.Bounds().Dy(),
+		crtShader,
+		&ebiten.DrawRectShaderOptions{
+			Images: [4]*ebiten.Image{
+				target,
+			},
+			Uniforms: map[string]any{
+				"Time":       float64(ebiten.Tick()) / float64(ebiten.TPS()),
+				"Resolution": []float32{float32(target.Bounds().Dx()), float32(target.Bounds().Dy())},
+			},
+		},
+	)
 	target.DrawImage(buffer, nil)
 }
 
-func PixelBufferFromNoise(noise []float64, width, height int, scale float64) []byte {
-
+func PixelBufferFromNoise(noise []float64, width, height int) []byte {
 	buff := make([]byte, 4*width*height)
 	idx := 0
 
@@ -185,7 +265,7 @@ func PixelBufferFromNoise(noise []float64, width, height int, scale float64) []b
 			buff[idx+0] = pixelValue
 			buff[idx+1] = pixelValue
 			buff[idx+2] = pixelValue
-			buff[idx+3] = 128
+			buff[idx+3] = 255
 			idx += 4
 		}
 	}

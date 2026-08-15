@@ -1,0 +1,54 @@
+//go:build ignore
+
+//kage:unit pixels
+
+package main
+
+
+var Resolution vec2
+var Time float
+
+func rand(co vec2) float {
+    return fract(sin(dot(co, vec2(12.9898, 78.233))) * 43758.5453)
+}
+
+func noise(uv vec2) float {
+    noiseAmount := 0.05
+    noiseSize := 1.0
+
+    pc := uv * Resolution
+    pc = floor(pc / noiseSize)
+    return (rand(pc*noiseSize + Time) - 0.5) * noiseAmount
+}
+
+func interlaceLines(uv vec2) float {
+    curvature := 2.0
+    lineWidth := 2.0
+    lineContrast := 0.3
+
+    dir := uv - 0.5
+
+    k := length(dir*dir)*0.25*curvature*curvature + 0.935*curvature
+
+    v := (dir.x * k) * Resolution.x
+    v *= min(1.0, 2.0/lineWidth) / curvature
+
+    return 1.0 + cos(v*1.2)*0.5*lineContrast
+}
+
+func Fragment(dstPos vec4, srcPos vec2, color vec4) vec4 {
+    uv := (dstPos.xy - imageDstOrigin()) / imageDstSize()
+
+    src := imageSrc0Origin() + uv*imageSrc0Size()
+    c := imageSrc0At(src)
+
+    // noise / static
+    n := noise(uv)
+    c += vec4(n, n, n, 0.0)
+
+    // bulging scanlines
+    c *= interlaceLines(uv)
+
+    c.a = 1.0
+    return c
+}

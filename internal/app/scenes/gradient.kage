@@ -1,0 +1,32 @@
+//go:build ignore
+
+//kage:unit pixels
+
+package main
+
+func Fragment(dstPos vec4, srcPos vec2, color vec4) vec4 {
+    var colorA = vec3(2.0/255.0, 16.0/255.0, 29.0/255.0)
+    var colorB = vec3(3.0/255.0, 23.0/255.0, 40.0/255.0)
+    var colorC = vec3(4.0/255.0, 36.0/255.0, 51.0/255.0)
+    var colorD = vec3(4.0/255.0, 46.0/255.0, 61.0/255.0)
+    var colorE = vec3(10.0/255.0, 60.0/255.0, 83.0/255.0)
+
+    c := imageSrc0At(srcPos)
+    var v vec3
+
+    if c.x > 0.9 {
+        v = colorE
+    } else if c.x > 0.65 {
+        v = colorD
+    } else if c.x > 0.5 {
+        v = colorC
+    } else if c.x > 0.3 {
+        v = colorB
+    } else {
+        v = colorA
+    }
+
+    v.xyz *= vec3(0.5)
+    
+	return vec4(v, 1.0)
+}

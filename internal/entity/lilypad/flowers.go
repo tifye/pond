@@ -2,24 +2,26 @@ package lilypad
 
 import (
 	_ "embed"
+	"math"
+	"math/rand/v2"
 
 	"github.com/hajimehoshi/ebiten/v2"
 	"github.com/tifye/pond/pkg/mathutil"
 )
 
-//go:embed lilypad.kage
-var lilypadShaderSrc []byte
-var lilpadShader *ebiten.Shader
+//go:embed flower.kage
+var flowerShaderSrc []byte
+var flowerShader *ebiten.Shader
 
 func init() {
-	if s, err := ebiten.NewShader(lilypadShaderSrc); err != nil {
+	if s, err := ebiten.NewShader(flowerShaderSrc); err != nil {
 		panic(err)
 	} else {
-		lilpadShader = s
+		flowerShader = s
 	}
 }
 
-type Lilypads struct {
+type Flowers struct {
 	Positions []mathutil.Point
 
 	vertices []ebiten.Vertex
@@ -28,25 +30,33 @@ type Lilypads struct {
 	img *ebiten.Image
 }
 
-func New(width, height int, v []mathutil.Point, sizes []int, angles []float64) *Lilypads {
+func NewFlowers(width, height int, spawnChance float64, v []mathutil.Point) *Flowers {
 	var vertexOffset uint16 = 0
 
+	actual := make([]mathutil.Point, 0)
 	vertices := make([]ebiten.Vertex, 0)
 	indices := make([]uint16, 0)
 
-	for i, lp := range v {
-		a := angles[i]
+	for _, lp := range v {
+		rn := rand.Float64()
+		if rn > spawnChance {
+			continue
+		}
 
-		left := lp.X - (float64(sizes[i]) / 2)
-		right := lp.X + (float64(sizes[i]) / 2)
+		a := math.Pi * 2 * rn
 
-		top := lp.Y - (float64(sizes[i]) / 2)
-		bottom := lp.Y + (float64(sizes[i]) / 2)
+		left := lp.X - 10
+		right := lp.X + 10
+
+		top := lp.Y - 10
+		bottom := lp.Y + 10
 
 		topLeft := mathutil.NewPoint(left, top).RotateAround(lp, a)
 		topRight := mathutil.NewPoint(right, top).RotateAround(lp, a)
 		bottomLeft := mathutil.NewPoint(left, bottom).RotateAround(lp, a)
 		bottomRight := mathutil.NewPoint(right, bottom).RotateAround(lp, a)
+
+		actual = append(actual, lp)
 
 		vertices = append(vertices,
 			// Top-Left (UV: 0,0)
@@ -69,10 +79,10 @@ func New(width, height int, v []mathutil.Point, sizes []int, angles []float64) *
 
 	img := ebiten.NewImage(width, height)
 	op := &ebiten.DrawTrianglesShaderOptions{}
-	img.DrawTrianglesShader(vertices, indices, lilpadShader, op)
+	img.DrawTrianglesShader(vertices, indices, flowerShader, op)
 
-	return &Lilypads{
-		Positions: v,
+	return &Flowers{
+		Positions: actual,
 
 		vertices: vertices,
 		indices:  indices,
@@ -81,7 +91,7 @@ func New(width, height int, v []mathutil.Point, sizes []int, angles []float64) *
 	}
 }
 
-func (l *Lilypads) Draw(target *ebiten.Image) {
+func (l *Flowers) Draw(target *ebiten.Image) {
 	opts := &ebiten.DrawImageOptions{}
 	opts.GeoM.Translate(
 		float64(target.Bounds().Dx())*0.5-float64(l.img.Bounds().Dx())*0.5,

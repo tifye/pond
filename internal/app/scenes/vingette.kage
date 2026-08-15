@@ -1,0 +1,20 @@
+//go:build ignore
+
+//kage:unit pixels
+
+package main
+
+var Resolution vec2
+
+func Fragment(dstPos vec4, srcPos vec2, color vec4) vec4 {
+    uv := (dstPos.xy - imageDstOrigin()) / imageDstSize()
+
+    t := 1.0
+    x := min(t - uv.x, uv.x)
+    y := min(t - uv.y, uv.y)
+
+    c := min(x, y) * 7
+    c = (1-c) - 0.1
+
+    return vec4(0,0,0,c)
+}
