@@ -4,10 +4,9 @@
 
 package main
 
-var Offset vec2
+var Resolution vec2
+var Time float
 
 func Fragment(dstPos vec4, srcPos vec2, color vec4) vec4 {
-    c := imageSrc0At(srcPos+Offset)
-
-    return vec4(0.0, 0.0, 0.0, c.w*0.38)
+    return imageSrc0At(srcPos)
 }

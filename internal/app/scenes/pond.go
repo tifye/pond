@@ -32,6 +32,10 @@ var vingetteShader *ebiten.Shader
 var shadowShaderSrc []byte
 var shadowShader *ebiten.Shader
 
+//go:embed surface_defraction.kage
+var surfaceDefractionShaderSrc []byte
+var surfaceDefractionShader *ebiten.Shader
+
 func init() {
 	if s, err := ebiten.NewShader(shadowShaderSrc); err != nil {
 		panic(err)
@@ -62,6 +66,12 @@ func init() {
 	} else {
 		crtShader = s
 	}
+
+	if s, err := ebiten.NewShader(surfaceDefractionShaderSrc); err != nil {
+		panic(err)
+	} else {
+		surfaceDefractionShader = s
+	}
 }
 
 type PondScene struct {
@@ -70,15 +80,17 @@ type PondScene struct {
 
 	buffer *ebiten.Image
 
-	agents *agent.Agents
-	fish   []*entity.Fish
+	agents    *agent.Agents
+	fish      []*entity.Fish
+	fishLayer *ebiten.Image
 
 	shadowLayer      *ebiten.Image
 	shadowShaderOpts *ebiten.DrawRectShaderOptions
 
-	lilypads   *lilypad.Lilypads
-	flowers    *lilypad.Flowers
-	background *ebiten.Image
+	lilypads       *lilypad.Lilypads
+	flowers        *lilypad.Flowers
+	background     *ebiten.Image
+	backgroundBuff *ebiten.Image
 }
 
 func (p *PondScene) Initialize(defaultFish []*entity.Fish) {
@@ -91,7 +103,7 @@ func (p *PondScene) Initialize(defaultFish []*entity.Fish) {
 			p.shadowLayer,
 		},
 		Uniforms: map[string]any{
-			"Offset": []float32{10.0, -15.0},
+			"Offset": []float32{10.0, -30.0},
 		},
 	}
 
@@ -106,6 +118,7 @@ func (p *PondScene) initFish(defaultFish []*entity.Fish) {
 	p.agents.AddBehaviour(agent.Boundry(float64(p.ScreenWidth), float64(p.ScreenHeight), 200, 0.05))
 
 	p.fish = make([]*entity.Fish, 0, numFish)
+	p.fishLayer = ebiten.NewImage(p.ScreenWidth, p.ScreenHeight)
 
 	for i := range defaultFish {
 		p.fish = append(p.fish, defaultFish[i])
@@ -164,16 +177,45 @@ func (p *PondScene) Update() Scene {
 }
 
 func (p *PondScene) Draw(target *ebiten.Image) {
-	p.shadowLayer.Clear()
+	target.DrawRectShader(
+		p.ScreenWidth,
+		p.ScreenHeight,
+		surfaceDefractionShader,
+		&ebiten.DrawRectShaderOptions{
+			Images: [4]*ebiten.Image{
+				p.background,
+			},
+			Uniforms: map[string]any{
+				"Time":       float64(ebiten.Tick()) / float64(ebiten.TPS()),
+				"Resolution": []float32{float32(target.Bounds().Dx()), float32(target.Bounds().Dy())},
+			},
+		},
+	)
 
-	for _, f := range p.fish {
-		f.Draw(p.shadowLayer)
-	}
+	p.shadowLayer.Clear()
 
 	p.lilypads.Draw(p.shadowLayer)
 	p.flowers.Draw(p.shadowLayer)
 
-	target.DrawImage(p.background, nil)
+	p.fishLayer.Clear()
+	for _, f := range p.fish {
+		f.Draw(p.fishLayer)
+	}
+
+	p.fishLayer.DrawRectShader(
+		target.Bounds().Dx(),
+		target.Bounds().Dy(),
+		shadowShader,
+		&ebiten.DrawRectShaderOptions{
+			Images: [4]*ebiten.Image{
+				p.shadowLayer,
+			},
+			Uniforms: map[string]any{
+				"Offset": []float32{10.0, -20.0},
+			},
+		},
+	)
+	target.DrawImage(p.fishLayer, nil)
 
 	target.DrawRectShader(
 		target.Bounds().Dx(),

@@ -45,7 +45,7 @@ type LoadingScene struct {
 }
 
 func (p *LoadingScene) Initialize() {
-	p.WaitFor = time.Millisecond * 1
+	p.WaitFor = time.Microsecond * 10
 
 	p.yin = entity.NewFish(entity.FishConfig{
 		SpawnPoint: mathutil.NewPoint(p.ScreenWidth*0.5, p.ScreenHeight*0.5),
@@ -72,7 +72,7 @@ func (p *LoadingScene) load() {
 	noiseWidth := int(float64(p.ScreenWidth) / renderScale)
 	noiseHeight := int(float64(p.ScreenHeight) / renderScale)
 
-	noiesMap := perlin.Map2D(noiseWidth, noiseHeight, 0.006)
+	noiesMap := perlin.FBMMap2D(noiseWidth, noiseHeight, 0.006, 4, 0.35, 3)
 	lilypads := lilypad.NewUsingNoiseThreshold(noiesMap, noiseWidth, noiseHeight, 2, 0.5, lilypad.DefaultFromNoiseConfig)
 
 	flowers := lilypad.NewFlowers(int(p.ScreenWidth), int(p.ScreenHeight), 0.3, lilypads.Positions)
@@ -112,11 +112,12 @@ func (p *LoadingScene) Update() Scene {
 	select {
 	case result := <-p.readych:
 		pondScene := &PondScene{
-			ScreenWidth:  int(p.ScreenWidth),
-			ScreenHeight: int(p.ScreenHeight),
-			lilypads:     result.lilypads,
-			flowers:      result.flowers,
-			background:   result.background,
+			ScreenWidth:    int(p.ScreenWidth),
+			ScreenHeight:   int(p.ScreenHeight),
+			lilypads:       result.lilypads,
+			flowers:        result.flowers,
+			background:     result.background,
+			backgroundBuff: ebiten.NewImageFromImage(result.background),
 		}
 		pondScene.Initialize([]*entity.Fish{p.yin, p.yang})
 		return pondScene
@@ -149,6 +150,7 @@ func (p *LoadingScene) Update() Scene {
 		p.yang.Position = p.followPoint
 		p.yang.Update()
 	}
+
 	return nil
 }
 

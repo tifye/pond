@@ -13,7 +13,7 @@ func Fragment(dstPos vec4, srcPos vec2, color vec4) vec4 {
     uv.y += cos(uv.x * 25 + Time + sin(uv.y * 25)) * 0.0125
     v := sin(uv.y * 40) *0.5+0.5
 
-    local := srcPos - imageSrc0Origin()
+    local := srcPos
     local.y = local.y + v * 10
 
     c := imageSrc0At(local)

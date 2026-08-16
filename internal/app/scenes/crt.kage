@@ -39,8 +39,7 @@ func interlaceLines(uv vec2) float {
 func Fragment(dstPos vec4, srcPos vec2, color vec4) vec4 {
     uv := (dstPos.xy - imageDstOrigin()) / imageDstSize()
 
-    src := imageSrc0Origin() + uv*imageSrc0Size()
-    c := imageSrc0At(src)
+    c := imageSrc0At(srcPos)
 
     // noise / static
     n := noise(uv)

@@ -90,6 +90,23 @@ func (p *Perlin) Map2D(width, height int, scale float64) []float64 {
 	return data
 }
 
+func (p *Perlin) FBMMap2D(width, height int, scale float64, octaves int, persistence, lacunarity float64) []float64 {
+	data := make([]float64, width*height)
+
+	for y := range height {
+		fy := float64(y) * scale
+		for x := range width {
+			fx := float64(x) * scale
+
+			v := p.FBM(fy, fx, 0, octaves, persistence, lacunarity)
+			v = v*0.5 + 0.5
+			data[y*width+x] = v
+		}
+	}
+
+	return data
+}
+
 // FBM sums several octaves of noise (fractal Brownian motion). The result is
 // normalised back to roughly [-1, 1].
 //
@@ -101,7 +118,7 @@ func (p *Perlin) FBM(x, y, z float64, octaves int, persistence, lacunarity float
 	amplitude := 1.0
 	frequency := 1.0
 
-	for i := 0; i < octaves; i++ {
+	for range octaves {
 		total += p.Noise3D(x*frequency, y*frequency, z*frequency) * amplitude
 		maxValue += amplitude
 		amplitude *= persistence
