@@ -6,6 +6,7 @@ import (
 	"math/rand/v2"
 
 	"github.com/hajimehoshi/ebiten/v2"
+	"github.com/hajimehoshi/ebiten/v2/inpututil"
 	"github.com/tifye/pond/internal/entity"
 	"github.com/tifye/pond/internal/entity/lilypad"
 	"github.com/tifye/pond/pkg/agent"
@@ -78,6 +79,8 @@ type PondScene struct {
 	ScreenWidth  int
 	ScreenHeight int
 
+	paused bool
+
 	buffer *ebiten.Image
 
 	agents    *agent.Agents
@@ -91,11 +94,19 @@ type PondScene struct {
 	flowers        *lilypad.Flowers
 	background     *ebiten.Image
 	backgroundBuff *ebiten.Image
+
+	fireflies *entity.FireFlies
 }
 
 func (p *PondScene) Initialize(defaultFish []*entity.Fish) {
 	p.initFish(defaultFish)
 	p.initLilypads()
+
+	p.fireflies = entity.NewFireFlies(
+		20,
+		float64(p.ScreenWidth),
+		float64(p.ScreenHeight),
+	)
 
 	p.shadowLayer = ebiten.NewImage(p.ScreenWidth, p.ScreenHeight)
 	p.shadowShaderOpts = &ebiten.DrawRectShaderOptions{
@@ -163,6 +174,18 @@ func (p *PondScene) initLilypads() {
 }
 
 func (p *PondScene) Update() Scene {
+	if inpututil.IsKeyJustPressed(ebiten.KeySpace) {
+		if p.paused {
+			p.paused = false
+		} else {
+			p.paused = true
+		}
+	}
+
+	if p.paused {
+		return nil
+	}
+
 	elapsed := float64(ebiten.Tick()) / float64(ebiten.TPS())
 	delta := 1 / float64(ebiten.TPS())
 
@@ -172,6 +195,8 @@ func (p *PondScene) Update() Scene {
 		p.fish[i].Position = p.agents.Position(uint(i))
 		p.fish[i].Update()
 	}
+
+	p.fireflies.Update()
 
 	return nil
 }
@@ -225,6 +250,8 @@ func (p *PondScene) Draw(target *ebiten.Image) {
 	)
 
 	target.DrawImage(p.shadowLayer, nil)
+
+	p.fireflies.Draw(target)
 
 	AddPostProccessing(target, p.buffer)
 }

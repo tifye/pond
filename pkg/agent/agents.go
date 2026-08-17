@@ -53,6 +53,12 @@ func (agents *Agents) AddBehaviour(b Behaviour) {
 	agents.behaviours = append(agents.behaviours, b)
 }
 
+func (agents *Agents) AddBehaviours(bs ...Behaviour) {
+	for _, b := range bs {
+		agents.behaviours = append(agents.behaviours, b)
+	}
+}
+
 func (agents *Agents) Update(lastTime, deltaTime float64) {
 	for _, b := range agents.behaviours {
 		for i := range agents.len {

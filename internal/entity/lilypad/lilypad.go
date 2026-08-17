@@ -9,13 +9,13 @@ import (
 
 //go:embed lilypad.kage
 var lilypadShaderSrc []byte
-var lilpadShader *ebiten.Shader
+var LilpadShader *ebiten.Shader
 
 func init() {
 	if s, err := ebiten.NewShader(lilypadShaderSrc); err != nil {
 		panic(err)
 	} else {
-		lilpadShader = s
+		LilpadShader = s
 	}
 }
 
@@ -69,7 +69,7 @@ func New(width, height int, v []mathutil.Point, sizes []int, angles []float64) *
 
 	img := ebiten.NewImage(width, height)
 	op := &ebiten.DrawTrianglesShaderOptions{}
-	img.DrawTrianglesShader(vertices, indices, lilpadShader, op)
+	img.DrawTrianglesShader(vertices, indices, LilpadShader, op)
 
 	return &Lilypads{
 		Positions: v,
