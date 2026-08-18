@@ -132,3 +132,22 @@ func (agents *Agents) Seek(idx uint, target mathutil.Point, strength float64) {
 	steer := desired.Subtract(agents.Velocity(idx))
 	agents.ApplyForce(idx, steer.MultiplyScalar(strength))
 }
+
+func (agents *Agents) Arrive(idx uint, target mathutil.Point, threshold, strength float64) {
+	desired := target.Subtract(agents.Position(idx))
+	mag := desired.Magnitude()
+
+	if mag < 0.001 {
+		return
+	}
+
+	t := min(1, mag/threshold)
+
+	desired = desired.Normalize().
+		MultiplyScalar(t * t * agents.MaxSpeed)
+
+	steer := desired.Subtract(agents.Velocity(idx)).
+		MultiplyScalar(strength)
+
+	agents.ApplyForce(idx, steer)
+}

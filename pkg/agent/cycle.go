@@ -40,5 +40,5 @@ func (c *CycleStaticTargets) Update(agents *Agents, idx uint, lastTime, deltaTim
 	}
 
 	target := c.agentTargets[idx]
-	agents.Seek(idx, target, c.Force)
+	agents.Arrive(idx, target, 100, c.Force)
 }

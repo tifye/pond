@@ -67,6 +67,10 @@ func (p Point) DistanceSquared(o Point) float64 {
 
 func (p Point) Normalize() Point {
 	sqr := math.Sqrt(p.X*p.X + p.Y*p.Y)
+	if sqr == 0 {
+		return Point{}
+	}
+
 	return Point{
 		X: p.X / sqr,
 		Y: p.Y / sqr,
@@ -132,7 +136,7 @@ func (p Point) AngleBetween(o Point) float64 {
 }
 
 func (p Point) Angle() float64 {
-	return math.Atan2(p.Y, p.Y)
+	return math.Atan2(p.Y, p.X)
 }
 
 func (p Point) String() string {

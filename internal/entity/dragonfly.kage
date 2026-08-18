@@ -1,0 +1,67 @@
+//go:build ignore
+
+//kage:unit pixels
+
+package main
+
+func rect(cur vec2, pos vec2, width float, height float) vec4 {
+    cur -= pos
+    col := step(cur.x, -width*0.5) +  1.0 - step(cur.x, width*0.5)
+    col += step(cur.y, -height*0.5) + 1.0 - step(cur.y, height*0.5)
+    col = clamp(col, 0, 1)
+    col = 1 - col
+    cur += pos
+    return vec4(col)
+}
+
+func rotate(cur vec2, p vec2, a float) vec2 {
+    v := cur - p
+
+    rotX := v.x * cos(a) - v.y * sin(a) 
+    rotY := v.x * sin(a) + v.y * cos(a) 
+
+    return vec2(rotX, rotY) + p
+}
+
+func drawWings(uv vec2) vec4 {
+    wingAngle := 3.14 / 6
+    wingSpan := 0.8
+    wingThickness := 0.10
+    wingPos := vec2(0.5, 0.3)
+    
+    rotated := rotate(uv, wingPos, wingAngle)
+    col := rect(rotated, wingPos, wingSpan, wingThickness)
+
+    rotated = rotate(uv, wingPos, -wingAngle)
+    col += rect(rotated, wingPos, wingSpan, wingThickness)
+
+    return col * 0.75
+}
+
+func drawHead(uv vec2) vec4 {
+    col := rect(uv, vec2(0.5, 0.2), 0.15, 0.15)
+    col *= vec4(0.8, 0.2, 0.45, 1.0)
+    return col
+}
+
+func drawBody(uv vec2) vec4 {
+    col := rect(uv, vec2(0.5, 0.6), 0.1, 0.8)
+    col *= vec4(0.2, 0.5, 1.0, 1.0)
+    return col
+}
+
+func Fragment(position vec4, texCoord vec2, color vec4) vec4 {
+    uv := texCoord 
+
+    body := drawBody(uv)
+    col := body
+
+    head := drawHead(uv)
+    col = head + col * (1.0 - head.w)
+    
+    wings := drawWings(uv)
+    col = wings + col * (1.0 - wings.w)
+
+    // col.w = 1.0
+    return col
+}

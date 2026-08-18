@@ -95,7 +95,8 @@ type PondScene struct {
 	background     *ebiten.Image
 	backgroundBuff *ebiten.Image
 
-	fireflies *entity.FireFlies
+	fireflies   *entity.FireFlies
+	dragonflies *entity.DragonFlies
 }
 
 func (p *PondScene) Initialize(defaultFish []*entity.Fish) {
@@ -106,6 +107,13 @@ func (p *PondScene) Initialize(defaultFish []*entity.Fish) {
 		20,
 		float64(p.ScreenWidth),
 		float64(p.ScreenHeight),
+	)
+
+	p.dragonflies = entity.NewDragonFlies(
+		5,
+		float64(p.ScreenWidth),
+		float64(p.ScreenHeight),
+		p.lilypads.Positions,
 	)
 
 	p.shadowLayer = ebiten.NewImage(p.ScreenWidth, p.ScreenHeight)
@@ -197,6 +205,7 @@ func (p *PondScene) Update() Scene {
 	}
 
 	p.fireflies.Update()
+	p.dragonflies.Update()
 
 	return nil
 }
@@ -252,6 +261,8 @@ func (p *PondScene) Draw(target *ebiten.Image) {
 	target.DrawImage(p.shadowLayer, nil)
 
 	p.fireflies.Draw(target)
+	// todo: add shadows
+	p.dragonflies.Draw(target)
 
 	AddPostProccessing(target, p.buffer)
 }
