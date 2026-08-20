@@ -11,16 +11,12 @@ func (b *BookstrapScene) Draw(target *ebiten.Image) {
 	panic("unimplemented")
 }
 
-type initializer interface {
+type Initializer interface {
 	Initialize()
 }
 
 // Update implements [Scene].
 func (b *BookstrapScene) Update() Scene {
-	if g, ok := b.Next.(initializer); ok {
-		g.Initialize()
-	}
-
 	return b.Next
 }
 

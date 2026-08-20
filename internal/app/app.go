@@ -50,9 +50,17 @@ func (a *App) Update() error {
 		return ebiten.Termination
 	}
 
-	if nextScene := a.activeScene.Update(); nextScene != nil {
-		a.activeScene = nextScene
-		a.activeScene.Update()
+	for {
+		scene := a.activeScene.Update()
+		if scene == nil {
+			break
+		}
+
+		a.activeScene = scene
+
+		if s, ok := scene.(scenes.Initializer); ok {
+			s.Initialize()
+		}
 	}
 
 	return nil

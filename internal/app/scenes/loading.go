@@ -45,7 +45,7 @@ type LoadingScene struct {
 }
 
 func (p *LoadingScene) Initialize() {
-	p.WaitFor = time.Microsecond * 10
+	p.WaitFor = time.Microsecond * 20
 
 	p.yin = entity.NewFish(entity.FishConfig{
 		SpawnPoint: mathutil.NewPoint(p.ScreenWidth*0.5, p.ScreenHeight*0.5),
@@ -120,7 +120,14 @@ func (p *LoadingScene) Update() Scene {
 			backgroundBuff: ebiten.NewImageFromImage(result.background),
 		}
 		pondScene.Initialize([]*entity.Fish{p.yin, p.yang})
-		return pondScene
+
+		return &TransitionScene{
+			Before:       p,
+			After:        pondScene,
+			ScreenWidth:  int(p.ScreenWidth),
+			ScreenHeight: int(p.ScreenHeight),
+		}
+
 	default:
 	}
 

@@ -1,0 +1,26 @@
+//go:build ignore
+
+//kage:unit pixels
+
+package main
+
+var Origin vec2
+var T float
+var MinRadius float
+var MaxRadius float
+
+func circle(cur vec2, pos vec2, r float) vec4 {
+    d := length(cur-pos)
+    d = d * (sin(d) * 0.5 + 0.5)
+    a := step(d, r)
+    return vec4(a, a, a, a)
+}
+
+func Fragment(dest vec4, input vec2) vec4 {
+    cur := dest.xy - imageDstOrigin()
+
+    radius := MinRadius + T * (MaxRadius - MinRadius) 
+    alpha := circle(cur, Origin, radius)
+
+    return alpha
+}
